@@ -105,8 +105,6 @@ class Game(object):
             if self.menu.change:
                 self.boardgame.changegrid()
                 self.menu.change = False
-            if self.boardgame.over:
-                self.change_state(State.MAINMENU)
 
     def on_mouse_move(self, pos) -> None:
         self.focus_check(pos)
@@ -116,8 +114,10 @@ class Game(object):
         if self.state is State.VOLMENU:
             self.menu.mouse_down = True
         if self.state is State.PLAYING and self.boardgame.collidepoint(pos):
-            self.boardgame.clicked(((pos[1]-self.boardgame.y-5)//50,
-                                    (pos[0]-self.boardgame.x-5)//50))
+            self.boardgame.clicked(
+                ((pos[1]-self.boardgame.y-5)//50, (pos[0]-self.boardgame.x-5)//50))
+        elif self.state is State.PLAYING and self.boardgame.over:
+            self.change_state(State.MAINMENU)
         else:
             try:
                 self.change_state(State(self.menu.button_selected()))
@@ -134,6 +134,8 @@ class Game(object):
         if self.state is State.PLAYING:
             if self.keyboard['LCTRL']:
                 self.boardgame.auto(key.name)
+            if self.boardgame.over:
+                self.change_state(State.MAINMENU)
 
 
 PIKA_PUZZLE = Game()

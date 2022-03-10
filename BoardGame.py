@@ -15,22 +15,11 @@ class BoardGame(Rect):
         self.maxheart = heart
         self.score = 0
         self.level = 1
+        self.over = False
         self.config = ConfigParser()
         self.config.read('config.ini')
         self.generate()
         self.clock.schedule_interval(self.timer, 0.97)
-
-    def draw(self, surface) -> None:
-        surface.draw.rect(self, color=LINE_COLOR)
-        for Ro in range(self.table_size[1]):
-            for Co in range(self.table_size[0]):
-                if (Ro, Co) in self.mark:
-                    surface.draw.rect(Rect((Co*50+5+self.x, Ro*50+5+self.y), (50, 50)),
-                                      color=LINE_COLOR)
-                if self.grid[Ro, Co] >= 0:
-                    surface.blit(f'f{self.dict[self.grid[Ro, Co]]}.png',
-                                 (Co*50+10+self.x, Ro*50+10+self.y))
-        self.showinfo(surface)
 
     def generate(self) -> None:
         self.grid = np.append(np.random.randint(low=self.npkm, size=int(
@@ -44,12 +33,11 @@ class BoardGame(Rect):
         self.mark = list()
         self.time = self.maxtime
         self.heart = self.maxheart
-        self.over = False
         self.randmode()
         self.getrank()
 
     def clicked(self, rc) -> None:
-        if len(self.mark) < 2 and self.grid[rc] >= 0:
+        if not self.over and len(self.mark) < 2 and self.grid[rc] >= 0:
             print(f'Clicked: {rc}')
             if rc in self.mark:
                 self.mark.remove(rc)
@@ -65,6 +53,7 @@ class BoardGame(Rect):
                 for rc in self.mark:
                     self.grid[rc] = -1
                 self.score += 1
+                self.updategrid()
                 self.checkgameover()
             self.mark.clear()
 
@@ -183,7 +172,53 @@ class BoardGame(Rect):
             self.clicked((ri, ci))
 
     def randmode(self) -> None:
-        self.mode = np.random.random_integers(3)
+        self.modegame = np.random.random_integers(10)
+
+    def updategrid(self) -> None:
+        if self.modegame == 1:
+            for i in range(self.table_size[1]):
+                self.grid[i, :] = sorted(
+                    self.grid[i, :], key=lambda v: v == -1)
+        if self.modegame == 2:
+            for i in range(self.table_size[1]):
+                self.grid[i, :] = sorted(
+                    self.grid[i, :], key=lambda v: v != -1)
+        if self.modegame == 3:
+            for i in range(self.table_size[0]):
+                self.grid[:, i] = sorted(
+                    self.grid[:, i], key=lambda v: v == -1)
+        if self.modegame == 4:
+            for i in range(self.table_size[0]):
+                self.grid[:, i] = sorted(
+                    self.grid[:, i], key=lambda v: v != -1)
+        if self.modegame == 5:
+            for i in range(self.table_size[1]):
+                if i < self.table_size[1]//2:
+                    self.grid[i, :] = sorted(
+                        self.grid[i, :], key=lambda v: v == -1)
+                else:
+                    self.grid[i, :] = sorted(
+                        self.grid[i, :], key=lambda v: v != -1)
+        if self.modegame == 6:
+            for i in range(self.table_size[1]):
+                if i < self.table_size[1]//2:
+                    self.grid[i, :] = sorted(
+                        self.grid[i, :], key=lambda v: v != -1)
+                else:
+                    self.grid[i, :] = sorted(
+                        self.grid[i, :], key=lambda v: v == -1)
+        if self.modegame == 7:
+            for i in range(self.table_size[1]):
+                self.grid[i, :self.table_size[0]//2] = sorted(
+                    self.grid[i, :self.table_size[0]//2], key=lambda v: v == -1)
+                self.grid[i, self.table_size[0]//2:] = sorted(
+                    self.grid[i, self.table_size[0]//2:], key=lambda v: v != -1)
+        if self.modegame == 8:
+            for i in range(self.table_size[1]):
+                self.grid[i, :self.table_size[0]//2] = sorted(
+                    self.grid[i, :self.table_size[0]//2], key=lambda v: v != -1)
+                self.grid[i, self.table_size[0]//2:] = sorted(
+                    self.grid[i, self.table_size[0]//2:], key=lambda v: v == -1)
 
     def getrank(self) -> None:
         self.mode = self.config.get('OPTION', 'mode')
@@ -191,30 +226,50 @@ class BoardGame(Rect):
             map(int, self.config.get(self.mode, 'score').split(', ')))
         print(f'Old ranks {self.mode}:\n{self.ranks}')
 
-    def showinfo(self, surface) -> None:
-        top, left = 870, 100
-        surface.draw.text(f'LEVEL:\n{self.level}',
+    def draw(self, surface) -> None:
+        surface.draw.rect(self, color=LINE_COLOR)
+        for Ro in range(self.table_size[1]):
+            for Co in range(self.table_size[0]):
+                if (Ro, Co) in self.mark:
+                    surface.draw.rect(Rect((Co*50+5+self.x, Ro*50+5+self.y), (50, 50)),
+                                      color=LINE_COLOR)
+                if self.grid[Ro, Co] >= 0:
+                    surface.blit(f'f{self.dict[self.grid[Ro, Co]]}.png',
+                                 (Co*50+10+self.x, Ro*50+10+self.y))
+        if self.over:
+            surface.draw.text('GAME OVER',
+                              center=self.center,
+                              color='white',
+                              fontname='rubo.ttf',
+                              fontsize=75)
+        top, left = 870, 75
+        surface.draw.text(f'GAME SIZE:\n{self.mode}',
                           topleft=(top, left),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'SCORE:\n{self.score}',
-                          topleft=(top, left+100),
+        surface.draw.text(f'LEVEL:\n{self.level}',
+                          topleft=(top, left+90),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'RANK:\n1. {self.ranks[0]}\n2. {self.ranks[1]}\n3. {self.ranks[2]}\n4. {self.ranks[3]}\n5. {self.ranks[4]}',
-                          topleft=(top, left+200),
+        surface.draw.text(f'SCORE:\n{self.score}',
+                          topleft=(top, left+180),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
         surface.draw.text(f'TIME:\n{self.time}',
-                          topleft=(top, left+400),
+                          topleft=(top, left+270),
+                          color='white',
+                          fontname='dpcomic.ttf',
+                          fontsize=25)
+        surface.draw.text(f'RANK:\n1. {self.ranks[0]}\n2. {self.ranks[1]}\n3. {self.ranks[2]}\n4. {self.ranks[3]}\n5. {self.ranks[4]}',
+                          topleft=(top, left+360),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
         surface.draw.text(f'{"O"*self.heart}',
-                          topleft=(top, left+490),
+                          topleft=(top, left+520),
                           color='red',
                           fontname='dpcomic.ttf',
                           fontsize=40)
