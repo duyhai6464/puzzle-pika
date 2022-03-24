@@ -52,11 +52,7 @@ class Game(object):
         mode = self.config.get('OPTION', 'MODE')
         table_size = (self.config.getint(mode, 'X'),
                       self.config.getint(mode, 'Y'))
-        npkm = self.config.getint(mode, 'npkm')
-        time = self.config.getint(mode, 'time')
-        print(
-            f'Creat game mode: {mode}  table size: {table_size}  number pokemon: {npkm}  time: {time}.')
-        self.boardgame = BoardGame(self.clock, table_size, npkm, time, 5, HEIGHT/2 - 25*table_size[0] - 5, HEIGHT/2 - 25 *
+        self.boardgame = BoardGame(self.clock, table_size, 5, HEIGHT/2 - 25*table_size[0] - 5, HEIGHT/2 - 25 *
                                    table_size[1] - 5, 50*table_size[0] + 10, 50*table_size[1] + 10)
         self.music.play(MUSIC_S['GP'])
 
@@ -113,11 +109,11 @@ class Game(object):
     def on_mouse_down(self, pos) -> None:
         if self.state is State.VOLMENU:
             self.menu.mouse_down = True
-        if self.state is State.PLAYING and self.boardgame.collidepoint(pos):
+        if self.state is State.PLAYING and self.boardgame.over:
+            self.change_state(State.MAINMENU)
+        elif self.state is State.PLAYING and self.boardgame.collidepoint(pos):
             self.boardgame.clicked(
                 ((pos[1]-self.boardgame.y-5)//50, (pos[0]-self.boardgame.x-5)//50))
-        elif self.state is State.PLAYING and self.boardgame.over:
-            self.change_state(State.MAINMENU)
         else:
             try:
                 self.change_state(State(self.menu.button_selected()))

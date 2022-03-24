@@ -58,7 +58,7 @@ class Menu:
         for button in self.buttons:
             button.focus = button.collidepoint(pos)
 
-    def button_selected(self) -> int | None:
+    def button_selected(self) -> int:
         for button in self.buttons:
             if button.focus:
                 return button.nextid
@@ -115,7 +115,7 @@ class PlayMenu(Menu):
         self.shuffle = False
         self.change = False
 
-    def button_selected(self) -> int | None:
+    def button_selected(self) -> int:
         for button in self.buttons:
             if button.focus:
                 if button.text == 'Shuffle':
@@ -134,7 +134,7 @@ class GamesizeMenu(Menu):
         self.title = 'GAME SIZE'
         self.config = ConfigParser()
 
-    def button_selected(self) -> int | None:
+    def button_selected(self) -> int:
         for button in self.buttons:
             if button.focus:
                 self.config.read('config.ini')
@@ -184,7 +184,7 @@ class VolMenu(Menu):
         self.config.set('OPTION', 'volume', str(self.vol))
         self.buttons[0].vol = str(self.vol)
 
-    def button_selected(self) -> int | None:
+    def button_selected(self) -> int:
         for button in self.buttons:
             if button.focus:
                 if button.text:

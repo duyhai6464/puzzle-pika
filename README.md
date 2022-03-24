@@ -21,7 +21,7 @@ PIKA written in Python 3 so familiarity with Python 3 is required. This game is 
 
 ## Getting started
  - Use git or the download button (on the right) to download the game source code. 
- - Open IDE or terminal and run 
+ - Open IDE or terminal and run MainGame file
  ```
  python MainGame.py 
  ```

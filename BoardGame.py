@@ -6,20 +6,17 @@ LINE_COLOR = '#6edcdc'
 
 
 class BoardGame(Rect):
-    def __init__(self, clock, table_size, npkm, time, heart, x, y, width, height) -> None:
+    def __init__(self, clock, table_size, heart, x, y, width, height) -> None:
         super().__init__(x, y, width, height)
         self.clock = clock
         self.table_size = table_size
-        self.npkm = npkm
-        self.maxtime = time
         self.maxheart = heart
         self.score = 0
         self.level = 1
         self.over = False
-        self.config = ConfigParser()
-        self.config.read('config.ini')
+        self.getconfig()
         self.generate()
-        self.clock.schedule_interval(self.timer, 0.97)
+        self.clock.schedule_interval(self.timer, 0.98)
 
     def generate(self) -> None:
         self.grid = np.append(np.random.randint(low=self.npkm, size=int(
@@ -30,11 +27,11 @@ class BoardGame(Rect):
         print(f'Board game:\n{self.grid}')
         self.dict = np.arange(1, 56)
         np.random.shuffle(self.dict)
-        self.mark = list()
-        self.time = self.maxtime
+        self.time = self.maxtime - self.maxtime//20*(self.level - 1)
         self.heart = self.maxheart
+        self.mark = list()
+        self.suggestmark = list()
         self.randmode()
-        self.getrank()
 
     def clicked(self, rc) -> None:
         if not self.over and len(self.mark) < 2 and self.grid[rc] >= 0:
@@ -44,7 +41,7 @@ class BoardGame(Rect):
             else:
                 self.mark.append(rc)
                 if len(self.mark) == 2:
-                    self.clock.schedule_unique(self.checkconnect, 0.15)
+                    self.clock.schedule_unique(self.checkconnect, 0.2)
 
     def checkconnect(self) -> None:
         if len(self.mark) == 2:
@@ -98,7 +95,7 @@ class BoardGame(Rect):
             print('You don\'t have enough heart!')
             return
         self.heart -= 1
-        print(f'shuffle successfully! Your hearts are down to {self.heart}.')
+        print(f'Shuffle successfully! Your hearts are down to {self.heart}.')
         mask = np.fromfunction(
             lambda i, j: self.grid[i, j] >= 0, (self.table_size[1], self.table_size[0]), dtype=int)
         temp = self.grid[mask]
@@ -128,7 +125,6 @@ class BoardGame(Rect):
             self.time -= 1
         else:
             self.gameover()
-            self.time = 9999
 
     def checkgameover(self) -> None:
         if self.allempty():
@@ -142,6 +138,7 @@ class BoardGame(Rect):
     def gameover(self) -> None:
         print('Game over')
         self.over = True
+        self.time = 9999
         self.ranks.append(self.score)
         self.ranks = sorted(self.ranks, reverse=True)[:5]
         self.config.set(self.mode, 'score', str(self.ranks)[1:-1])
@@ -150,9 +147,10 @@ class BoardGame(Rect):
 
     def levelup(self) -> None:
         self.level += 1
-        self.score += self.time*100//self.maxtime
-        self.heart = min(self.maxheart, self.heart+1)
+        self.score += self.time
+        heart = self.heart + 1
         self.generate()
+        self.heart = min(self.heart, heart)
         print(f'level up to {self.level}')
 
     def auto(self, k) -> None:
@@ -163,13 +161,22 @@ class BoardGame(Rect):
             print('Auto click disabled!')
             self.clock.unschedule(self.autoclick)
         if k == 'S':
-            print(f'Suggest move: {self.allimpossible()[1:]}')
+            self.suggest()
 
     def autoclick(self) -> None:
         impossible, ro, co, ri, ci = self.allimpossible()
         if not impossible:
             self.clicked((ro, co))
             self.clicked((ri, ci))
+
+    def suggest(self) -> None:
+        ro, co, ri, ci = self.allimpossible()[1:]
+        print(f'Suggest move: ({ro}, {co}), ({ri}, {ci})')
+        self.suggestmark.extend(((ro, co), (ri, ci)))
+        self.clock.schedule_unique(self.unsuggest, 1.5)
+
+    def unsuggest(self) -> None:
+        self.suggestmark.clear()
 
     def randmode(self) -> None:
         self.modegame = np.random.random_integers(10)
@@ -220,17 +227,28 @@ class BoardGame(Rect):
                 self.grid[i, self.table_size[0]//2:] = sorted(
                     self.grid[i, self.table_size[0]//2:], key=lambda v: v == -1)
 
-    def getrank(self) -> None:
+    def getconfig(self) -> None:
+        self.config = ConfigParser()
+        self.config.read('config.ini')
         self.mode = self.config.get('OPTION', 'mode')
+        self.npkm = self.config.getint(self.mode, 'npkm')
+        self.maxtime = self.config.getint(self.mode, 'time')
+        print(
+            f'Creat game mode: {self.mode}  table size: {self.table_size}  number pokemon: {self.npkm}  time: {self.maxtime}.')
         self.ranks = list(
             map(int, self.config.get(self.mode, 'score').split(', ')))
-        print(f'Old ranks {self.mode}:\n{self.ranks}')
+        self.rankboard = '\n'.join(
+            f'{index}. {value}' for index, value in enumerate(self.ranks, 1))
+        print(f'Old ranks in {self.mode}: {self.ranks}')
 
     def draw(self, surface) -> None:
         surface.draw.rect(self, color=LINE_COLOR)
         for Ro in range(self.table_size[1]):
             for Co in range(self.table_size[0]):
                 if (Ro, Co) in self.mark:
+                    surface.draw.filled_rect(Rect((Co*50+5+self.x, Ro*50+5+self.y), (50, 50)),
+                                             color=LINE_COLOR)
+                if (Ro, Co) in self.suggestmark:
                     surface.draw.rect(Rect((Co*50+5+self.x, Ro*50+5+self.y), (50, 50)),
                                       color=LINE_COLOR)
                 if self.grid[Ro, Co] >= 0:
@@ -248,23 +266,23 @@ class BoardGame(Rect):
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'LEVEL:\n{self.level}',
+        surface.draw.text(f'LEVEL: {self.level}',
                           topleft=(top, left+90),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'SCORE:\n{self.score}',
-                          topleft=(top, left+180),
+        surface.draw.text(f'SCORE: {self.score}',
+                          topleft=(top, left+170),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'TIME:\n{self.time}',
-                          topleft=(top, left+270),
+        surface.draw.text(f'TIME: {self.time}',
+                          topleft=(top, left+250),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
-        surface.draw.text(f'RANK:\n1. {self.ranks[0]}\n2. {self.ranks[1]}\n3. {self.ranks[2]}\n4. {self.ranks[3]}\n5. {self.ranks[4]}',
-                          topleft=(top, left+360),
+        surface.draw.text(f'RANKING:\n{self.rankboard}',
+                          topleft=(top, left+330),
                           color='white',
                           fontname='dpcomic.ttf',
                           fontsize=25)
