@@ -2,7 +2,10 @@
 
 **PIKA is a simple game written in Python 3 code based on the rules of the game Pikachu Classic**
 
-![image]
+
+'''Image in gameplay'''
+
+![image](https://user-images.githubusercontent.com/64906672/167713267-07b5af43-3937-4b20-b32a-e989b2326516.png)
 
 ## Prerequisites
 PIKA written in Python 3 so familiarity with Python 3 is required. This game is used pygame-zero library, you need to install it before the first.*
