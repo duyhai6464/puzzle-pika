@@ -99,7 +99,7 @@ class InfoMenu(Menu):
 
     def draw(self, surface) -> None:
         super().draw(surface)
-        surface.draw.text('This is some information about the game and the creator of the game',
+        surface.draw.text('/*This page contains information on the game and its designer.*/',
                           center=(500, 400),
                           color='white',
                           fontname='dpcomic.ttf',
